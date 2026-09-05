@@ -1,0 +1,17 @@
+# Normalise line endings in the repository.
+* text=auto eol=lf
+
+# Files that MUST be LF regardless of the checkout platform. A shell script with
+# CRLF line endings fails inside a Linux container with a misleading
+# "no such file or directory" on the shebang line.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+
+# Binary assets git should never try to convert.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

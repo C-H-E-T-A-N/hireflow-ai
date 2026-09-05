@@ -12,14 +12,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Strip carriage returns in case the image is built from a Windows checkout: a
+# CRLF shebang makes the kernel report a misleading "no such file or directory".
+# .gitattributes also pins *.sh to LF, so this is belt and braces.
+RUN sed -i "s/\r$//" entrypoint.sh && chmod +x entrypoint.sh
+
 # Run as a non-root user.
 RUN useradd --create-home --uid 1000 hireflow && chown -R hireflow:hireflow /app
 USER hireflow
 
 EXPOSE 8000
 
-# Migrations run at start so a fresh environment converges on its own, then the
-# demo workspace is seeded. The seeder is a no-op once data exists (it exits
-# non-zero and says so), hence the `|| true` - a populated database must never
-# stop the service from booting.
-CMD ["sh", "-c", "alembic upgrade head && (python -m scripts.seed || true) && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# See entrypoint.sh: migrations run synchronously, seeding runs in the
+# background, and uvicorn binds the port immediately so platform health checks
+# pass without waiting for several thousand demo rows to be written.
+CMD ["./entrypoint.sh"]
