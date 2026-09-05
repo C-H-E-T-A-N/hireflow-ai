@@ -4,14 +4,18 @@
 # Ordering matters on platforms that health-check a new instance and kill it if
 # the port does not open quickly:
 #
-#   1. Run migrations synchronously. They are fast, and serving requests against
+#   1. Print a redacted diagnostic summary, so a failed deploy leaves an
+#      explanation in the platform log instead of an unexplained hang.
+#   2. Run migrations synchronously. They are fast, and serving requests against
 #      an un-migrated database would be worse than a slightly later start.
-#   2. Seed the demo workspace in the BACKGROUND. Seeding inserts a few thousand
+#   3. Seed the demo workspace in the BACKGROUND. Seeding inserts a few thousand
 #      attendance rows, which is far too slow to block the port from opening.
 #      The seeder is a no-op once data exists, so restarts are safe.
-#   3. Exec uvicorn as PID 1 so it receives shutdown signals directly.
+#   4. Exec uvicorn as PID 1 so it receives shutdown signals directly.
 
 set -e
+
+python -m scripts.preflight
 
 echo "[entrypoint] running database migrations..."
 alembic upgrade head

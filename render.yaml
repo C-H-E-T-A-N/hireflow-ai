@@ -9,11 +9,16 @@
 # Secrets are marked `sync: false`, so Render prompts for them in the dashboard
 # and they are never committed here.
 
+# IMPORTANT: the database and the web service must share a region. Render's
+# `fromDatabase` supplies the *internal* connection string, which only resolves
+# inside its own region - a mismatch makes the service hang on start-up trying
+# to reach a database it cannot route to.
 databases:
   - name: hireflow-db
     databaseName: hireflow
     user: hireflow
     plan: free
+    region: oregon
 
 services:
   - type: web
@@ -22,7 +27,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    region: singapore
+    region: oregon
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:

@@ -15,6 +15,12 @@ if settings.is_sqlite:
     # from a threadpool so connections must be shareable across threads.
     _connect_args["check_same_thread"] = False
     _engine_kwargs.pop("pool_pre_ping")
+else:
+    # Fail fast when the database is unreachable. Without this, a misrouted
+    # connection string (for example a managed database in a different region
+    # from the service) makes start-up hang indefinitely instead of logging a
+    # clear error, which is very hard to diagnose from outside the platform.
+    _connect_args["connect_timeout"] = 10
 
 engine = create_engine(settings.database_url, connect_args=_connect_args, **_engine_kwargs)
 
