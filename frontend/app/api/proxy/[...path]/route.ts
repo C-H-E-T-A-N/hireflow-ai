@@ -11,6 +11,17 @@ import { NextRequest, NextResponse } from "next/server";
 const BACKEND_URL = (process.env.BACKEND_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 const API_PREFIX = "/api/v1";
 
+/**
+ * Upstream timeout. Generous on purpose: free hosting tiers spin the backend
+ * down when idle, and the first request after that pays a cold start of up to
+ * ~50s. Without an explicit bound the function would hang until the platform
+ * killed it, producing an opaque failure instead of a usable error state.
+ */
+const UPSTREAM_TIMEOUT_MS = 50_000;
+
+// Allow the route to outlive a cold start rather than being cut off mid-wait.
+export const maxDuration = 60;
+
 // Hop-by-hop and identity headers that must not be forwarded verbatim.
 const STRIPPED_REQUEST_HEADERS = new Set([
   "host",
@@ -39,6 +50,7 @@ async function forward(request: NextRequest, path: string[]) {
       headers,
       body,
       cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
     const payload = await response.text();
@@ -49,19 +61,24 @@ async function forward(request: NextRequest, path: string[]) {
         "cache-control": "no-store",
       },
     });
-  } catch {
-    // The backend is unreachable. Return the same error envelope the API uses
-    // so every screen's error state can render it without special-casing.
+  } catch (error) {
+    // The backend is unreachable or too slow. Return the same error envelope the
+    // API itself uses, so every screen's error state renders it without any
+    // special-casing - and distinguish a cold start from a hard failure, since
+    // the fix for one is "wait" and for the other is "check configuration".
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+
     return NextResponse.json(
       {
         error: {
-          code: "backend_unreachable",
-          message:
-            "Could not reach the HireFlow API. Check that the backend is running and BACKEND_API_URL is correct.",
+          code: timedOut ? "backend_timeout" : "backend_unreachable",
+          message: timedOut
+            ? "The HireFlow API did not respond in time. Free hosting tiers sleep when idle, so the first request after a pause can take up to a minute - please retry."
+            : "Could not reach the HireFlow API. Check that the backend is running and BACKEND_API_URL is correct.",
           details: [],
         },
       },
-      { status: 503 },
+      { status: timedOut ? 504 : 503 },
     );
   }
 }
