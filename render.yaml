@@ -18,7 +18,7 @@ databases:
     databaseName: hireflow
     user: hireflow
     plan: free
-    region: oregon
+    region: singapore
 
 services:
   - type: web
@@ -27,7 +27,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    region: oregon
+    region: singapore
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:

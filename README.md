@@ -623,7 +623,7 @@ placeholder names in `.env.example` and documentation.
 | --- | --- |
 | Frontend (Vercel) | <https://hireflow-ai-lime.vercel.app> |
 | Repository | <https://github.com/C-H-E-T-A-N/hireflow-ai> |
-| Backend (Render) | deploy with the button below, then set `BACKEND_API_URL` on Vercel |
+| Backend API (Render) | <https://hireflow-api-xpya.onrender.com> · [docs](https://hireflow-api-xpya.onrender.com/docs) |
 
 ### Backend → Render (free tier)
 
@@ -638,6 +638,11 @@ Nothing else is required to get a working demo: `DEMO_MODE` defaults to `true`,
 and the people-search and LLM providers default to their local implementations.
 To enable real calling, set `HUNAR_API_KEY` and flip `DEMO_MODE` to `false` in
 the Render dashboard.
+
+The database and the web service **must be created in the same region**. Render's
+`fromDatabase` supplies an *internal* connection string that does not resolve
+across regions, and a mismatch makes the service hang on start-up with no port
+ever binding. `scripts/preflight.py` detects exactly this and says so in the log.
 
 Two caveats of the free tier, both worth knowing before a demo:
 
