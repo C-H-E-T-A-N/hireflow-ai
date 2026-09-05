@@ -617,41 +617,59 @@ placeholder names in `.env.example` and documentation.
 
 ## Deployment
 
+**Live demo**
+
+| Piece | URL |
+| --- | --- |
+| Frontend (Vercel) | <https://hireflow-ai-lime.vercel.app> |
+| Repository | <https://github.com/C-H-E-T-A-N/hireflow-ai> |
+| Backend (Render) | deploy with the button below, then set `BACKEND_API_URL` on Vercel |
+
+### Backend → Render (free tier)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/C-H-E-T-A-N/hireflow-ai)
+
+The button reads `render.yaml`, which provisions a Docker web service plus a
+managed PostgreSQL database, both on the free plan. On first boot the container
+runs `alembic upgrade head` and seeds the demo workspace, so the API comes up
+already populated.
+
+Nothing else is required to get a working demo: `DEMO_MODE` defaults to `true`,
+and the people-search and LLM providers default to their local implementations.
+To enable real calling, set `HUNAR_API_KEY` and flip `DEMO_MODE` to `false` in
+the Render dashboard.
+
+Two caveats of the free tier, both worth knowing before a demo:
+
+- The service **sleeps after 15 minutes idle**, so the first request afterwards
+  pays a cold start of up to a minute. The frontend proxy waits it out and shows
+  an explanatory message rather than an opaque failure.
+- The free PostgreSQL instance **expires after 30 days**.
+
 ### Frontend → Vercel
 
-1. Import the repo and set the root directory to `frontend`.
-2. Environment variable: `BACKEND_API_URL=https://<your-backend-host>`.
-3. Deploy. Build command `npm run build`, output handled by the Next.js preset.
-
-Because the browser only calls same-origin `/api/proxy/*`, no CORS configuration is needed for the
-normal deployment shape.
-
-### Backend → Render / Railway / Fly.io / any container host
+Already deployed from `frontend/`. To reproduce:
 
 ```bash
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
+cd frontend
+vercel link
+vercel env add BACKEND_API_URL production   # paste the Render URL
+vercel deploy --prod
 ```
 
-Production environment variables:
+Because the browser only calls the same-origin `/api/proxy/*` route, no CORS
+configuration is needed for the normal deployment shape.
 
-```
-APP_ENV=production
-SECRET_KEY=<long random string>
-DATABASE_URL=postgresql+psycopg://…
-CORS_ORIGINS=https://<your-frontend-host>
-PUBLIC_BACKEND_URL=https://<your-backend-host>
-HUNAR_API_KEY=<secret>
-HUNAR_WEBHOOK_SECRET=<secret>
-DEMO_MODE=false
+### Any other container host
+
+```bash
+docker build -t hireflow-api ./backend
+docker run -p 8000:8000 -e DATABASE_URL=postgresql+psycopg://... hireflow-api
 ```
 
-### Database → Supabase or managed PostgreSQL
-
-Set `DATABASE_URL` to the connection string (the pooled connection string works; `postgres://`
-and `postgresql://` forms are normalised automatically) and run `alembic upgrade head`.
-Optionally run `python -m scripts.seed` to populate a demo workspace.
+`PUBLIC_BACKEND_URL` resolves itself from `RENDER_EXTERNAL_URL` (or `VERCEL_URL`)
+when present, so Hunar webhook callbacks are correct on the first deploy without
+being configured by hand.
 
 ### Deployment checklist
 
