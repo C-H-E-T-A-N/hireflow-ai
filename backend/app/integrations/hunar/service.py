@@ -106,7 +106,7 @@ class HunarVoiceProvider:
         than send `http://localhost:8000/...`. Locally we fall back to polling,
         which produces the same result via the same state machine.
         """
-        base = settings.public_backend_url.rstrip("/")
+        base = settings.public_url.rstrip("/")
         if not is_publicly_reachable(base):
             logger.debug(
                 "PUBLIC_BACKEND_URL (%s) is not publicly reachable; "

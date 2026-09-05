@@ -18,5 +18,8 @@ USER hireflow
 
 EXPOSE 8000
 
-# Migrations run at start so a fresh environment converges on its own.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Migrations run at start so a fresh environment converges on its own, then the
+# demo workspace is seeded. The seeder is a no-op once data exists (it exits
+# non-zero and says so), hence the `|| true` - a populated database must never
+# stop the service from booting.
+CMD ["sh", "-c", "alembic upgrade head && (python -m scripts.seed || true) && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

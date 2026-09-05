@@ -7,6 +7,7 @@ browser-safe view of this configuration.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -81,6 +82,22 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def public_url(self) -> str:
+        """The externally reachable base URL for this backend.
+
+        Hosting platforms inject their own URL, which saves configuring it by
+        hand and keeps Hunar webhook callbacks correct on first deploy. An
+        explicit PUBLIC_BACKEND_URL always wins.
+        """
+        if self.public_backend_url and self.public_backend_url != "http://localhost:8000":
+            return self.public_backend_url
+        for variable in ("RENDER_EXTERNAL_URL", "VERCEL_URL", "PUBLIC_URL"):
+            value = os.environ.get(variable)
+            if value:
+                return value if value.startswith("http") else f"https://{value}"
+        return self.public_backend_url
 
     @property
     def is_sqlite(self) -> bool:

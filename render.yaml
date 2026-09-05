@@ -1,11 +1,18 @@
-# Render blueprint for the HireFlow AI backend and database.
-# The frontend deploys separately to Vercel with BACKEND_API_URL pointing here.
+# Render blueprint for the HireFlow AI backend and its database.
 #
-# Secrets (sync: false) are set in the Render dashboard, never committed.
+# The frontend deploys separately to Vercel, with BACKEND_API_URL pointing at
+# this service. Because the browser only ever calls the Next.js proxy, the two
+# never need to agree on CORS for the normal path.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repository.
+#
+# Secrets are marked `sync: false`, so Render prompts for them in the dashboard
+# and they are never committed here.
 
 databases:
   - name: hireflow-db
     databaseName: hireflow
+    user: hireflow
     plan: free
 
 services:
@@ -15,28 +22,37 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
+    region: singapore
     healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: APP_ENV
         value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Render injects the connection string from the database above.
       - key: DATABASE_URL
         fromDatabase:
           name: hireflow-db
           property: connectionString
+
       - key: SECRET_KEY
         generateValue: true
 
-      # Public URL of this service; Hunar webhook callbacks are built from it.
-      - key: PUBLIC_BACKEND_URL
-        sync: false
-      # Origin of the deployed frontend.
+      # PUBLIC_BACKEND_URL is resolved automatically from Render's own
+      # RENDER_EXTERNAL_URL (see app/core/config.py), so Hunar webhook
+      # callbacks are correct on the very first deploy.
+
+      # Set this to the deployed Vercel origin if you ever call the API
+      # directly from the browser instead of through the Next.js proxy.
       - key: CORS_ORIGINS
         sync: false
 
-      # Leave DEMO_MODE=true until real calling is intended.
+      # Conversations are simulated until this is false AND a working Hunar key
+      # is present. An expired key falls back to simulation automatically.
       - key: DEMO_MODE
         value: "true"
-
       - key: HUNAR_API_KEY
         sync: false
       - key: HUNAR_WEBHOOK_SECRET
